@@ -2,7 +2,7 @@
 
 > AI-powered workflow automation for intelligent trend monitoring, relevance classification, human approval, and audit logging.
 
-![Architecture](architecture/Architecture diagram.png)
+![Architecture](architecture/architecture.png)
 
 ---
 
