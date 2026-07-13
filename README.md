@@ -4,6 +4,22 @@
 
 # AI Workflow Automation with n8n
 
+<p align="center">
+
+<img src="https://img.shields.io/badge/n8n-Workflow%20Automation-EA4B71?logo=n8n&logoColor=white">
+
+<img src="https://img.shields.io/badge/LLM-Groq-00A67E">
+
+<img src="https://img.shields.io/badge/API-SerpAPI-blue">
+
+<img src="https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white">
+
+<img src="https://img.shields.io/badge/License-MIT-green">
+
+<img src="https://img.shields.io/badge/Status-Stable-success">
+
+</p>
+
 > AI-powered workflow automation for intelligent trend monitoring, relevance classification, human approval, and audit logging.
 
 ![Architecture](architecture/architecture.png)
