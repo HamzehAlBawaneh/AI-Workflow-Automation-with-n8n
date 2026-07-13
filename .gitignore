@@ -1,0 +1,28 @@
+# Environment Variables
+.env
+.env.*
+
+# Logs
+*.log
+
+# Temporary Files
+*.tmp
+*.temp
+
+# IDE Settings
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# n8n Local Data (if applicable)
+.n8n/
+
+# Credentials
+credentials.json

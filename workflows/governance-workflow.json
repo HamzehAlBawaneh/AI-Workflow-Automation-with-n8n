@@ -1,0 +1,2608 @@
+{
+  "name": "AI Trend Detection with Mandatory Approval Gate Governance",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "8f3a9771-32c4-431e-8b76-a606cff7942b",
+      "name": "Daily Trend Detection",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        112,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "region",
+              "value": "US",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "timeWindow",
+              "value": "now 7-d",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "category",
+              "value": "0",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "noiseKeywords",
+              "value": "celebrity,viral,meme,entertainment,gossip,scandal,trending,challenge",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6d458d9b-ab66-463f-a395-54d22626aa3c",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google_trends"
+            },
+            {
+              "name": "q",
+              "value": "={{$json.trend_query}}"
+            },
+            {
+              "name": "geo",
+              "value": "US"
+            },
+            {
+              "name": "api_key",
+              "value": "{{SERPAPI_API_KEY}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b3cacc5f-09a0-498c-b197-b9517a366fd9",
+      "name": "Fetch Google Trends Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        688,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "keyword",
+              "value": "={{ $json.search_parameters?.q \n  || $json.related_queries?.top?.[0]?.query\n  || null }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "region",
+              "value": "={{ $('Workflow Configuration').item.json.region }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "trendScore",
+              "value": "={{ $json.formattedTraffic || $json.traffic || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "id-4",
+              "name": "timeWindow",
+              "value": "={{ $('Workflow Configuration').item.json.timeWindow }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "rawData",
+              "value": "={{ JSON.stringify($json) }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d0a17340-b387-4f59-9464-8118997c5672",
+      "name": "Normalize Trend Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        848,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ \n  $json.keyword !== null &&\n  !$('Workflow Configuration').item.json.noiseKeywords\n    .split(',')\n    .some(noise => $json.keyword.toLowerCase().includes(noise.toLowerCase()))\n}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "6fede737-78d3-4703-a23e-2d11de73593d",
+      "name": "Rule-Based Filter: Remove Noise",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1008,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "approvalTitle",
+              "value": "Trend Insight Draft – Approval Required",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "messageText",
+              "value": "={{ '**DRAFT POST FOR REVIEW**\\n\\n' + 'Keyword: ' + $json.keyword + '\\n' + 'Region: ' + $json.region + '\\n' + 'Risk: ' + $json.risk_label + '\\n' + 'Category: ' + $json.category + '\\n' + 'Relevance: ' + $json.relevance_score + '/100\\n\\n' + 'Draft Text:\\n' + $json.draft_text + '\\n\\n' + 'Reasoning:\\n' + $json.reasoning + '\\n\\n' + 'Please review and select an action below:' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "keyword",
+              "value": "={{$json.keyword}}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "draft_text",
+              "value": "={{ $json.draft_text }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "risk_label",
+              "value": "={{ $json.risk_label }}",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "category",
+              "value": "={{ $json.category }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "relevance_score",
+              "value": "={{ $json.relevance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "id-8",
+              "name": "reasoning",
+              "value": "={{ $json.reasoning }}",
+              "type": "string"
+            },
+            {
+              "id": "id-9",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "88c471cb-7909-4a6f-b322-af9dd13c0b27",
+      "name": "Prepare Approval Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2304,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Trend keyword: {{$json.keyword}}\nRegion: {{$json.region}}\nTrend score: {{$json.trendScore}}\nTime window: {{$json.timeWindow}}\n\nTask:\nDetermine whether this trend has AI, institutional, governance, regulatory, security, or education-system relevance.\n\nGuidelines:\n- Focus on AI, policy, governance frameworks, regulation, compliance, institutional impact, or strategic implications.\n- Exclude consumer hype, entertainment, product launches, or viral trends.\n- Be conservative. If institutional relevance is unclear, mark as not relevant.\n\nReturn ONLY valid JSON with this exact schema:\n{\n  \"relevant\": true or false,\n  \"relevance_reason\": \"short explanation\",\n  \"risk_label\": \"normal\" or \"sensitive\",\n  \"category\": \"governance\" or \"regulation\" or \"security\" or \"education\"\n}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an AI governance analyst for Enterprise. Your role is to classify whether trending topics are relevant to AI governance, regulation, security, or education.\n\nClassify as RELEVANT only if the trend relates to:\n- AI governance frameworks, policies, or standards\n- AI regulation, compliance, or legal developments\n- AI security, safety, risk management, or ethical concerns\n- AI education, workforce development, or skill building\n\nClassify as IRRELEVANT if the trend is:\n- Entertainment, celebrity news, or viral content\n- General technology hype without governance implications\n- Consumer product launches without regulatory significance\n- Social media challenges or memes\n\nBe conservative - when in doubt, mark as irrelevant."
+        }
+      },
+      "id": "be9821ff-45a6-4c80-a09c-b3191765036b",
+      "name": "AI Relevance Classifier",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1184,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"relevant\": {\n      \"type\": \"boolean\",\n      \"description\": \"Whether the trend is relevant to AI governance, regulation, security, or education\"\n    },\n    \"relevance_reason\": {\n      \"type\": \"string\",\n      \"description\": \"Short explanation of why the trend is or is not relevant\"\n    },\n    \"risk_label\": {\n      \"type\": \"string\",\n      \"enum\": [\"normal\", \"sensitive\"],\n      \"description\": \"Risk level of the trend\"\n    },\n    \"category\": {\n      \"type\": \"string\",\n      \"enum\": [\"governance\", \"regulation\", \"security\", \"education\"],\n      \"description\": \"Primary Enterprise domain category\"\n    }\n  },\n  \"required\": [\"relevant\", \"relevance_reason\", \"risk_label\", \"category\"],\n  \"additionalProperties\": false\n}\n"
+      },
+      "id": "13e35cdf-ef46-4d55-9717-260dc12fdd2f",
+      "name": "Structured Output Parser for Classifier",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1328,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.output.relevant }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3f0e7c85-dda7-4379-b8d6-547ebc0584a1",
+      "name": "Check If Relevant",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1552,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are drafting an internal insight post for Enterprise.\n\nContext:\nTrend keyword: {{$json.keyword}}\nRegion: {{$json.region}}\nTrend score: {{$json.trendScore}}\nTime window: {{$json.timeWindow}}\nCategory: {{$json.category}}\nRisk level: {{$json.risk_label}}\nReasoning: {{ $json.reasoning }}\nTask:\nWrite an insight-based draft explaining WHY this trend matters from an institutional, governance, regulatory, security, or education-system perspective.\n\nRules:\n- Analytical, neutral tone\n- No hype, no speculation\n- No absolute claims\n- Not for publishing\n\nReturn ONLY valid JSON in this EXACT format:\n\n{\n  \"draft_text\": \"DRAFT – Not Approved for Publishing\\n\\n<draft text here>\",\n  \"draft_version\": 1\n}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an AI governance analyst for Enterprise. Your role is to generate DRAFT insight posts about AI trends that relate to governance, regulation, security, or education.\n\nYour drafts must:\n- Focus on implications for AI governance, policy, security, or education\n- Use measured, analytical tone - avoid hype and speculation\n- Avoid absolute claims or predictions\n- Stay under 280 characters\n- Clearly label as DRAFT\n- Provide actionable insights\n\nCategories:\n- governance: AI frameworks, policies, standards, ethics\n- regulation: Laws, compliance, legal developments\n- security: Safety, risk management, vulnerabilities\n- education: Workforce development, training, skills\n\nRisk levels:\n- HIGH: Immediate regulatory/security concerns\n- MEDIUM: Emerging issues requiring monitoring\n- LOW: Informational, educational content\n- NONE: No significant risk implications"
+        }
+      },
+      "id": "d4aba928-ecf2-489a-becc-3399dce3c626",
+      "name": "Draft Generator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1792,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"draft_text\": { \"type\": \"string\" },\n    \"draft_version\": { \"type\": \"number\" }\n  },\n  \"required\": [\"draft_text\", \"draft_version\", \"reasoning\"],\n  \"additionalProperties\": false\n}\n"
+      },
+      "id": "9365a436-8ca5-4e3d-8318-9877360f95e8",
+      "name": "Structured Output Parser for Draft Generator",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1936,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "keyword",
+              "value": "={{ $json.keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "draft_text",
+              "value": "={{ $json.draft_text }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "risk_label",
+              "value": "={{ $json.risk_label }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "category",
+              "value": "={{ $json.category }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "relevance_score",
+              "value": "={{ $json.relevance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "id-6",
+              "name": "reasoning",
+              "value": "={{ $json.reasoning }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "approval_decision",
+              "value": "={{ $json.approval_decision }}",
+              "type": "string"
+            },
+            {
+              "id": "id-8",
+              "name": "reviewer",
+              "value": "={{ $json.reviewer }}",
+              "type": "string"
+            },
+            {
+              "id": "id-9",
+              "name": "approval_timestamp",
+              "value": "={{ $json.approval_timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "id-10",
+              "name": "approved",
+              "value": "={{ $json.approved }}",
+              "type": "boolean"
+            },
+            {
+              "id": "id-11",
+              "name": "status",
+              "value": "Approved",
+              "type": "string"
+            },
+            {
+              "id": "087f05b1-3326-4859-94a5-fd14d9220394",
+              "name": "draft_version",
+              "value": "={{ $json.draft_version }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e21fd4a5-ad45-4e9b-9e15-9935f399a29b",
+      "name": "Prepare Approved Log Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4304,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "{{N8N_DATA_TABLE_APPROVED_ID}}",
+          "mode": "list",
+          "cachedResultName": "Approved",
+          "cachedResultUrl": "/projects/{{N8N_PROJECT_ID}}/datatables/{{N8N_DATA_TABLE_APPROVED_ID}}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "keyword": "={{$json.keyword}}",
+            "draft_version": "={{$json.draft_version}}",
+            "decision": "\"approved\"",
+            "feedback": "={{$json.feedback || \"\"}}",
+            "reviewer": "={{$json.reviewer || \"telegram\"}}",
+            "timestamp": "={{$json.approval_timestamp}}",
+            "draft_text": "={{$json.draft_text}}",
+            "risk_label": "={{$json.risk_label}}",
+            "category": "={{$json.category}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_version",
+              "displayName": "draft_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "feedback",
+              "displayName": "feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewer",
+              "displayName": "reviewer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_text",
+              "displayName": "draft_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "risk_label",
+              "displayName": "risk_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f465cf44-8f12-46fb-a4ff-bf9fcf426bdf",
+      "name": "Log Approved Items Only",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4528,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "keyword",
+              "value": "={{ $json.keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "draft_text",
+              "value": "={{ $('Get row(s)').item.json.draft_text }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "risk_label",
+              "value": "={{ $json.risk_label }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "category",
+              "value": "={{ $json.category }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "relevance_score",
+              "value": "={{ $json.revelance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "id-6",
+              "name": "reasoning",
+              "value": "={{ $json.reasoning }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "approval_decision",
+              "value": "={{ $json.approval_decision }}",
+              "type": "string"
+            },
+            {
+              "id": "id-8",
+              "name": "reviewer",
+              "value": "={{ $json.reviewer }}",
+              "type": "string"
+            },
+            {
+              "id": "id-9",
+              "name": "approval_timestamp",
+              "value": "={{ $json.approval_timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "id-10",
+              "name": "approved",
+              "value": "={{ $json.approved }}",
+              "type": "boolean"
+            },
+            {
+              "id": "id-11",
+              "name": "status",
+              "value": "Rejected",
+              "type": "string"
+            },
+            {
+              "id": "8eb1f098-0074-4384-9928-3e27d25156d9",
+              "name": "draft_version",
+              "value": "={{ $json.draft_version }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "03ed4a64-1fe3-4ff9-936f-61a517ffd352",
+      "name": "Prepare Rejection Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4080,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "{{N8N_DATA_TABLE_REJECTION_ID}}",
+          "mode": "list",
+          "cachedResultName": "Rejection",
+          "cachedResultUrl": "/projects/{{N8N_PROJECT_ID}}/datatables/{{N8N_DATA_TABLE_REJECTION_ID}}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "keyword": "={{$json.keyword}}",
+            "draft_version": "={{$json.draft_version}}",
+            "decision": "rejected",
+            "reviewer": "={{$json.reviewer || \"telegram\"}}",
+            "feedback": "={{$json.feedback || \"\"}}",
+            "timestamp": "={{$json.approval_timestamp}}",
+            "draft_text": "={{$json.draft_text}}",
+            "risk_label": "={{$json.risk_label}}",
+            "category": "={{$json.category}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_version",
+              "displayName": "draft_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "feedback",
+              "displayName": "feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewer",
+              "displayName": "reviewer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_text",
+              "displayName": "draft_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "risk_label",
+              "displayName": "risk_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f3d9b56b-b869-431b-8dee-00910f0303f2",
+      "name": "Log Rejection with Callback Data",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4304,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Workflow stopped: Draft was not approved. Decision: {{ $('Extract Telegram Callback Data').item.json.approval_decision }}"
+      },
+      "id": "5ca8a1e3-3a9c-4e64-b3e6-5aa6e434ace0",
+      "name": "Stop on Non-Approval",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        4528,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        832
+      ],
+      "id": "827f05cf-3e9f-4fee-9d51-da0e5adde202",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "{{GROQ_API_KEY}}",
+          "name": "Groq Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        800
+      ],
+      "id": "b1b1c517-1b61-4b99-b198-807856297209",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "{{GROQ_API_KEY}}",
+          "name": "Groq Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "170a0c14-696f-4490-a415-4670de3b2641",
+              "name": "keyword",
+              "value": "={{$node[\"Normalize Trend Data\"].json.keyword}}",
+              "type": "string"
+            },
+            {
+              "id": "d0cc094f-f766-480f-8d7a-09e732ba944d",
+              "name": "region",
+              "value": "={{$node[\"Normalize Trend Data\"].json.region}}",
+              "type": "string"
+            },
+            {
+              "id": "a3bfe7f5-461b-4f6e-8fe9-4df878005182",
+              "name": "trendScore",
+              "value": "={{$node[\"Normalize Trend Data\"].json.trendScore}}",
+              "type": "string"
+            },
+            {
+              "id": "b194584a-1f93-4a2f-9ae9-f4794d0ca6f3",
+              "name": "timeWindow",
+              "value": "={{$node[\"Normalize Trend Data\"].json.timeWindow}}",
+              "type": "string"
+            },
+            {
+              "id": "2cdad87c-ed59-4004-afb0-889a6c38a5d9",
+              "name": "risk_label",
+              "value": "={{ $('AI Relevance Classifier').item.json.output.risk_label }}",
+              "type": "string"
+            },
+            {
+              "id": "f61f9adc-caf5-4bcf-905a-fd475275ec6c",
+              "name": "category",
+              "value": "={{ $('AI Relevance Classifier').item.json.output.category }}",
+              "type": "string"
+            },
+            {
+              "id": "a91c1e69-9337-445b-8734-8c2124f49ae3",
+              "name": "draft_text",
+              "value": "={{ $('Draft Generator').item.json.output.draft_text }}",
+              "type": "string"
+            },
+            {
+              "id": "b03ba3c8-8faf-4e75-b3f8-9066fbacbf0d",
+              "name": "draft_version",
+              "value": "={{ $('Draft Generator').item.json.output.draft_version }}",
+              "type": "string"
+            },
+            {
+              "id": "6f14ae36-36a3-44b8-b3dc-bd5012c82b26",
+              "name": "relevance_reason",
+              "value": "={{ $('AI Relevance Classifier').item.json.output.relevance_reason }}",
+              "type": "string"
+            },
+            {
+              "id": "id-10",
+              "name": "relevance_score",
+              "value": "={{ $('AI Relevance Classifier').item.json.output.relevant ? 100 : 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "87833629-2807-446c-8036-04ad103cf612",
+              "name": "reasoning",
+              "value": "={{ $json.reasoning }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2112,
+        624
+      ],
+      "id": "01b61a6c-501e-414c-a949-074b6ff8352e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8158988c-2ee6-482e-b839-16f3255b106e",
+              "name": "trend_query",
+              "value": "AI governance",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        640
+      ],
+      "id": "c954796d-b047-4bc9-a532-276a012669af",
+      "name": "Define Scope"
+    },
+    {
+      "parameters": {
+        "chatId": "{{TELEGRAM_CHAT_ID}}",
+        "text": "={{ $('Prepare Approval Message').item.json.messageText }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Approve",
+                    "additionalFields": {
+                      "callback_data": "=approve|{{$execution.id}}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Request Changes",
+                    "additionalFields": {
+                      "callback_data": "=revise|{{$execution.id}}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject|{{$execution.id}}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "7b63305f-5229-42fe-ad09-0138d191749c",
+      "name": "Send Three-Option Approval to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2512,
+        480
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_BOT_TOKEN}}",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "approval_decision",
+              "value": "={{ $node[\"Telegram Trigger\"].json.callback_query.data.split('|')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "1cfc4ef7-1e04-4f7d-ab63-9f0a4782ad87",
+              "name": "execution_id",
+              "value": "={{ $node[\"Telegram Trigger\"].json.callback_query.data.split('|')[1] }}\n",
+              "type": "string"
+            },
+            {
+              "id": "5809a7de-377a-43d3-b5f6-acc5c5f28605",
+              "name": "reviewer",
+              "value": "={{ $node[\"Telegram Trigger\"].json.from?.username || $node[\"Telegram Trigger\"].json.from?.first_name || 'Unknown' }}\n",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "approval_timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "approved",
+              "value": "={{ $node[\"Telegram Trigger\"].json.callback_query.data.split('|')[0] === 'approve' }}",
+              "type": "boolean"
+            },
+            {
+              "id": "1df63646-34a9-4f24-829f-0a7a111977bd",
+              "name": "keyword",
+              "value": "={{$json.keyword}}",
+              "type": "string"
+            },
+            {
+              "id": "47bacfa6-38a8-4b89-9d8d-6c02e06e38da",
+              "name": " draft_text",
+              "value": "={{$json.draft_text}}",
+              "type": "string"
+            },
+            {
+              "id": "65e55688-f865-4bdc-a355-9e361ec6c9f5",
+              "name": "risk_label",
+              "value": "={{$json.risk_label}}",
+              "type": "string"
+            },
+            {
+              "id": "dcc3c709-a1bf-4912-8bd9-30aa02517486",
+              "name": "category",
+              "value": "{{$json.category}}",
+              "type": "string"
+            },
+            {
+              "id": "6174d018-0fb8-44a9-920c-03cd12bae6f6",
+              "name": "revelance_score",
+              "value": "={{$json.relevance_score}}",
+              "type": "string"
+            },
+            {
+              "id": "e957b0e9-fe14-495b-b29b-2a90a888e433",
+              "name": "reasoning",
+              "value": "={{$json.reasoning}}",
+              "type": "string"
+            },
+            {
+              "id": "9382226a-69c3-46b8-b9fc-a61dccdb31de",
+              "name": "draft_version",
+              "value": "={{$json.draft_version}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c38ab889-c38d-4a81-b569-49f6a315ceac",
+      "name": "Extract Button Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3616,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.approval_decision }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "bd929911-fb5d-48e3-b265-2685880173b2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Approved"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.approval_decision }}",
+                    "rightValue": "revise",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4db4b28f-cf68-42e7-991a-b91a047f3086"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Request Changes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.approval_decision }}",
+                    "rightValue": "reject",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c5b92339-5d98-450a-8a46-e888a927a590"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Rejected"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "689e9cbd-592e-4c47-997a-7807d7de50a7",
+      "name": "Route by Button Click",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3840,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{TELEGRAM_CHAT_ID}}",
+        "text": "={{ '🔄 Changes requested. Regenerating draft version ' + $json.draft_version + ' for: ' + $json.keyword }}",
+        "additionalFields": {}
+      },
+      "id": "f84409ed-e616-44ab-8491-1168b1007281",
+      "name": "Notify - Changes Requested",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4752,
+        624
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_BOT_TOKEN}}",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "keyword",
+              "value": "={{ $json.keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "draft_version",
+              "value": "={{ $json.draft_version - 1 }}",
+              "type": "number"
+            },
+            {
+              "id": "id-3",
+              "name": "decision",
+              "value": "request_changes",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "reviewer",
+              "value": "={{ $('Extract Button Response').item.json.reviewer }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "feedback",
+              "value": "={{ $json.feedback }}",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "timestamp",
+              "value": "={{ $('Extract Button Response').item.json.approval_timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "draft_text",
+              "value": "={{ $json.previous_draft }}",
+              "type": "string"
+            },
+            {
+              "id": "id-8",
+              "name": "risk_label",
+              "value": "={{ $json.risk_label }}",
+              "type": "string"
+            },
+            {
+              "id": "id-9",
+              "name": "category",
+              "value": "={{ $json.category }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6d3d4a85-9b44-4cbc-9b96-f2061ee912e1",
+      "name": "Log Request Changes Decision",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4304,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "{{N8N_DATA_TABLE_REJECTION_ID}}",
+          "cachedResultName": "Rejection",
+          "cachedResultUrl": "/projects/{{N8N_PROJECT_ID}}/datatables/{{N8N_DATA_TABLE_REJECTION_ID}}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "keyword": "={{ $json.keyword }}",
+            "draft_version": "={{ $json.draft_version }}",
+            "decision": "={{ $json.decision }}",
+            "reviewer": "={{ $json.reviewer }}",
+            "feedback": "={{ $json.feedback }}",
+            "timestamp": "={{ $json.timestamp }}",
+            "draft_text": "={{ $json.draft_text }}",
+            "risk_label": "={{ $json.risk_label }}",
+            "category": "={{ $json.category }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_version",
+              "displayName": "draft_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewer",
+              "displayName": "reviewer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "feedback",
+              "displayName": "feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_text",
+              "displayName": "draft_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "risk_label",
+              "displayName": "risk_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "2a32b8b0-2049-4d9e-9bc7-14bc9a871b22",
+      "name": "Store Request Changes Log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4528,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        3056,
+        624
+      ],
+      "id": "78d881e4-0beb-41d9-a356-1891ebad62a3",
+      "name": "Telegram Trigger",
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_BOT_TOKEN}}",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "{{N8N_DATA_TABLE_DRAFT_CONTEXT_ID}}",
+          "mode": "list",
+          "cachedResultName": "draft_context",
+          "cachedResultUrl": "/projects/{{N8N_PROJECT_ID}}/datatables/{{N8N_DATA_TABLE_DRAFT_CONTEXT_ID}}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "execution_id": "={{$execution.id}}",
+            "keyword": "={{$json.keyword}}",
+            "draft_text": "={{$json.draft_text}}",
+            "risk_label": "={{$json.risk_label}}",
+            "category": "={{$json.category}}",
+            "relevance_score": "={{$json.relevance_score}}",
+            "reasoning": "={{$json.reasoning}}",
+            "draft_version": "={{ ($json.draft_version || 1) + 1 }}",
+            "created_at": "={{$now.toISO()}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_text",
+              "displayName": "draft_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "risk_label",
+              "displayName": "risk_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "relevance_score",
+              "displayName": "relevance_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reasoning",
+              "displayName": "reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_version",
+              "displayName": "draft_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source_context",
+              "displayName": "source_context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2528,
+        672
+      ],
+      "id": "09dd4faa-4a4d-4414-bac6-2dc99667774c",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "{{N8N_DATA_TABLE_DRAFT_CONTEXT_ID}}",
+          "mode": "list",
+          "cachedResultName": "draft_context",
+          "cachedResultUrl": "/projects/{{N8N_PROJECT_ID}}/datatables/{{N8N_DATA_TABLE_DRAFT_CONTEXT_ID}}"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "execution_id",
+              "keyValue": "={{ $json.execution_id }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3408,
+        624
+      ],
+      "id": "6e48f8b7-9eb7-4929-923f-de2d356a8eb3",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5aeb547c-b5a8-490a-9ccb-53a72859cac2",
+              "name": "action",
+              "value": "={{$json.callback_query.data.split('|')[0]}}",
+              "type": "string"
+            },
+            {
+              "id": "2ae984ab-694f-40df-a4f6-bb5747280211",
+              "name": "execution_id",
+              "value": "={{$json.callback_query.data.split('|')[1]}}",
+              "type": "string"
+            },
+            {
+              "id": "295b54e2-dae2-4d32-aa46-9d4480e92778",
+              "name": "reviewer",
+              "value": "={{$json.from.username || $json.from.first_name || 'Unknown'}}",
+              "type": "string"
+            },
+            {
+              "id": "0972d283-2c58-411d-b30c-fc8ee38db22f",
+              "name": "timestamp",
+              "value": "{{$now.toISO()}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3232,
+        624
+      ],
+      "id": "408ce02d-c773-4e17-a635-c6504f302cfb",
+      "name": "Button response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "21a30092-faf9-46e6-a617-43056a8f34db",
+              "name": "approved",
+              "value": "true",
+              "type": "string"
+            },
+            {
+              "id": "c25d32b5-aa74-458a-91f2-998902852959",
+              "name": "approval_decision",
+              "value": "={{$json.approval_decision}}",
+              "type": "string"
+            },
+            {
+              "id": "9f964f65-ed60-480a-a4cb-d5889f88a6c2",
+              "name": "approval_timestamp",
+              "value": "={{$json.approval_timestamp}}",
+              "type": "string"
+            },
+            {
+              "id": "142a4b9c-0128-4ead-80dd-2cafcab0e68d",
+              "name": "reviewer",
+              "value": "={{$json.reviewer}}",
+              "type": "string"
+            },
+            {
+              "id": "d3206305-1b55-4a99-a67c-958908dd74fe",
+              "name": "draft_text",
+              "value": "={{ $('Get row(s)').item.json.draft_text }}",
+              "type": "string"
+            },
+            {
+              "id": "7c462d70-4fd0-4c6a-8e02-71e5d4648aee",
+              "name": "draft_version",
+              "value": "={{$json.draft_version}}",
+              "type": "string"
+            },
+            {
+              "id": "632edee5-7fd7-49dc-93b8-2ddff5c83a21",
+              "name": "risk_label",
+              "value": "={{$json.risk_label}}",
+              "type": "string"
+            },
+            {
+              "id": "8a5daab3-3684-4b26-90de-3b4efd57998a",
+              "name": "category",
+              "value": "={{$json.category}}",
+              "type": "string"
+            },
+            {
+              "id": "cbe0b065-eb11-4d9d-9de9-ce0d6a77d2dd",
+              "name": "approval_source",
+              "value": "\"Telegram\"",
+              "type": "string"
+            },
+            {
+              "id": "266f64de-e9d9-440e-9e33-4714e09d55ca",
+              "name": "keyword",
+              "value": "={{ $json.keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "00d3aaf3-5a68-4379-b7d8-b04fdc824013",
+              "name": "relevance_score",
+              "value": "={{ $json.revelance_score }}",
+              "type": "string"
+            },
+            {
+              "id": "b6a90265-e41e-43f3-be56-5e740824fdc9",
+              "name": "draft_version",
+              "value": "={{ $json.draft_version }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4080,
+        624
+      ],
+      "id": "39af80ec-e1f0-4507-9db6-25048841b910",
+      "name": "Prepare Revised Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "21a30092-faf9-46e6-a617-43056a8f34db",
+              "name": "approved",
+              "value": "true",
+              "type": "string"
+            },
+            {
+              "id": "c25d32b5-aa74-458a-91f2-998902852959",
+              "name": "approval_decision",
+              "value": "={{$json.approval_decision}}",
+              "type": "string"
+            },
+            {
+              "id": "9f964f65-ed60-480a-a4cb-d5889f88a6c2",
+              "name": "approval_timestamp",
+              "value": "={{$json.approval_timestamp}}",
+              "type": "string"
+            },
+            {
+              "id": "142a4b9c-0128-4ead-80dd-2cafcab0e68d",
+              "name": "reviewer",
+              "value": "={{$json.reviewer}}",
+              "type": "string"
+            },
+            {
+              "id": "d3206305-1b55-4a99-a67c-958908dd74fe",
+              "name": "draft_text",
+              "value": "={{ $('Get row(s)').item.json.draft_text }}",
+              "type": "string"
+            },
+            {
+              "id": "7c462d70-4fd0-4c6a-8e02-71e5d4648aee",
+              "name": "draft_version",
+              "value": "={{$json.draft_version}}",
+              "type": "string"
+            },
+            {
+              "id": "632edee5-7fd7-49dc-93b8-2ddff5c83a21",
+              "name": "risk_label",
+              "value": "={{$json.risk_label}}",
+              "type": "string"
+            },
+            {
+              "id": "8a5daab3-3684-4b26-90de-3b4efd57998a",
+              "name": "category",
+              "value": "={{$json.category}}",
+              "type": "string"
+            },
+            {
+              "id": "cbe0b065-eb11-4d9d-9de9-ce0d6a77d2dd",
+              "name": "approval_source",
+              "value": "\"Telegram\"",
+              "type": "string"
+            },
+            {
+              "id": "266f64de-e9d9-440e-9e33-4714e09d55ca",
+              "name": "keyword",
+              "value": "={{ $json.keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "00d3aaf3-5a68-4379-b7d8-b04fdc824013",
+              "name": "relevance_score",
+              "value": "={{ $json.revelance_score }}",
+              "type": "string"
+            },
+            {
+              "id": "b6a90265-e41e-43f3-be56-5e740824fdc9",
+              "name": "draft_version",
+              "value": "={{ $json.draft_version }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4080,
+        464
+      ],
+      "id": "c20dc537-f72a-4aa3-a9d0-db16c88f8dff",
+      "name": "Prepare Approved Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "approvalTitle",
+              "value": "Trend Insight Draft – Approval Required",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "messageText",
+              "value": "={{ '**DRAFT POST FOR REVIEW**\\n\\n' + 'Keyword: ' + $json.keyword + '\\n' + 'Region: ' + $json.region + '\\n' + 'Risk: ' + $json.risk_label + '\\n' + 'Category: ' + $json.category + '\\n' + 'Relevance: ' + $json.relevance_score + '/100\\n\\n' + 'Draft Text:\\n' + $json.draft_text + '\\n\\n' + 'Reasoning:\\n' + $json.reasoning + '\\n\\n' + 'Please review and select an action below:' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "keyword",
+              "value": "={{$json.keyword}}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "draft_text",
+              "value": "={{ $json.draft_text }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "risk_label",
+              "value": "={{ $json.risk_label }}",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "category",
+              "value": "={{ $json.category }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "relevance_score",
+              "value": "={{ $json.relevance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "id-8",
+              "name": "reasoning",
+              "value": "={{ $json.reasoning }}",
+              "type": "string"
+            },
+            {
+              "id": "id-9",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "99d85f81-39ac-45af-a037-b000d6b51be8",
+      "name": "Prepare Approval Message1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5456,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are drafting an internal insight post for Enterprise.\n\nContext:\nTrend keyword: {{$json.keyword}}\nRegion: {{$json.region}}\nTrend score: {{$json.trendScore}}\nTime window: {{$json.timeWindow}}\nCategory: {{$json.category}}\nRisk level: {{$json.risk_label}}\nReasoning: {{ $json.reasoning }}\nTask:\nWrite an insight-based draft explaining WHY this trend matters from an institutional, governance, regulatory, security, or education-system perspective.\n\nRules:\n- Analytical, neutral tone\n- No hype, no speculation\n- No absolute claims\n- Not for publishing\n\nReturn ONLY valid JSON in this EXACT format:\n\n{\n  \"draft_text\": \"DRAFT – Not Approved for Publishing\\n\\n<draft text here>\",\n  \"draft_version\": 1\n}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an AI governance analyst for Enterprise. Your role is to generate DRAFT insight posts about AI trends that relate to governance, regulation, security, or education.\n\nYour drafts must:\n- Focus on implications for AI governance, policy, security, or education\n- Use measured, analytical tone - avoid hype and speculation\n- Avoid absolute claims or predictions\n- Stay under 280 characters\n- Clearly label as DRAFT\n- Provide actionable insights\n\nCategories:\n- governance: AI frameworks, policies, standards, ethics\n- regulation: Laws, compliance, legal developments\n- security: Safety, risk management, vulnerabilities\n- education: Workforce development, training, skills\n\nRisk levels:\n- HIGH: Immediate regulatory/security concerns\n- MEDIUM: Emerging issues requiring monitoring\n- LOW: Informational, educational content\n- NONE: No significant risk implications"
+        }
+      },
+      "id": "e71f46c0-d76a-4ec6-b014-8919fb7b69e8",
+      "name": "Draft Generator1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        4944,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"draft_text\": { \"type\": \"string\" },\n    \"draft_version\": { \"type\": \"number\" }\n  },\n  \"required\": [\"draft_text\", \"draft_version\", \"reasoning\"],\n  \"additionalProperties\": false\n}\n"
+      },
+      "id": "b5cd0b67-4c2f-4479-a44d-97fcee7e781d",
+      "name": "Structured Output Parser for Draft Generator1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        5088,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        4944,
+        800
+      ],
+      "id": "953b6542-3bb3-41de-8e5c-dc3d1f167e2b",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "{{GROQ_API_KEY}}",
+          "name": "Groq Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "170a0c14-696f-4490-a415-4670de3b2641",
+              "name": "keyword",
+              "value": "={{$node[\"Get row(s)\"].json.keyword}}",
+              "type": "string"
+            },
+            {
+              "id": "f61f9adc-caf5-4bcf-905a-fd475275ec6c",
+              "name": "category",
+              "value": "={{$node[\"Get row(s)\"].json.category}}",
+              "type": "string"
+            },
+            {
+              "id": "a91c1e69-9337-445b-8734-8c2124f49ae3",
+              "name": "draft_text",
+              "value": "={{$node[\"Get row(s)\"].json.draft_text}}",
+              "type": "string"
+            },
+            {
+              "id": "b03ba3c8-8faf-4e75-b3f8-9066fbacbf0d",
+              "name": "draft_version",
+              "value": "={{$node[\"Get row(s)\"].json.draft_version}}",
+              "type": "string"
+            },
+            {
+              "id": "id-10",
+              "name": "relevance_score",
+              "value": "={{$node[\"Get row(s)\"].json.relevance_score}}",
+              "type": "number"
+            },
+            {
+              "id": "cacb4f1d-08ed-47da-86d9-f76c3b3f6231",
+              "name": "risk_label",
+              "value": "={{$node[\"Get row(s)\"].json.risk_label}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5264,
+        624
+      ],
+      "id": "459c5fcd-d2cb-418a-804c-4969eb1e6b81",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "chatId": "{{TELEGRAM_CHAT_ID}}",
+        "text": "={{ $('Prepare Approval Message1').item.json.messageText }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Approve",
+                    "additionalFields": {
+                      "callback_data": "=approve|{{$execution.id}}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Request Changes",
+                    "additionalFields": {
+                      "callback_data": "=revise|{{$execution.id}}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject|{{$execution.id}}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "df875688-ecc0-4f23-8c9e-c1883852d3b1",
+      "name": "Send Three-Option Approval to Telegram1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5664,
+        480
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_BOT_TOKEN}}",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "{{N8N_DATA_TABLE_DRAFT_CONTEXT_ID}}",
+          "mode": "list",
+          "cachedResultName": "draft_context",
+          "cachedResultUrl": "/projects/{{N8N_PROJECT_ID}}/datatables/{{N8N_DATA_TABLE_DRAFT_CONTEXT_ID}}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "execution_id": "={{$execution.id}}",
+            "keyword": "={{$json.keyword}}",
+            "draft_text": "={{$json.draft_text}}",
+            "risk_label": "={{$json.risk_label}}",
+            "category": "={{$json.category}}",
+            "relevance_score": "={{$json.relevance_score}}",
+            "reasoning": "={{$json.reasoning}}",
+            "draft_version": "={{ ($json.draft_version || 1) + 1 }}",
+            "created_at": "={{$now.toISO()}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_text",
+              "displayName": "draft_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "risk_label",
+              "displayName": "risk_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "relevance_score",
+              "displayName": "relevance_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reasoning",
+              "displayName": "reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_version",
+              "displayName": "draft_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source_context",
+              "displayName": "source_context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        5680,
+        672
+      ],
+      "id": "6626e74f-ee98-4c67-b938-41dd78ae2862",
+      "name": "Insert row1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Trend Detection": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Define Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Google Trends Data": {
+      "main": [
+        [
+          {
+            "node": "Normalize Trend Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Trend Data": {
+      "main": [
+        [
+          {
+            "node": "Rule-Based Filter: Remove Noise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rule-Based Filter: Remove Noise": {
+      "main": [
+        [
+          {
+            "node": "AI Relevance Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approval Message": {
+      "main": [
+        [
+          {
+            "node": "Send Three-Option Approval to Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser for Classifier": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Relevance Classifier",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Relevance Classifier": {
+      "main": [
+        [
+          {
+            "node": "Check If Relevant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Relevant": {
+      "main": [
+        [
+          {
+            "node": "Draft Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser for Draft Generator": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Draft Generator",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Generator": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approved Log Data": {
+      "main": [
+        [
+          {
+            "node": "Log Approved Items Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Rejection Data": {
+      "main": [
+        [
+          {
+            "node": "Log Rejection with Callback Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Rejection with Callback Data": {
+      "main": [
+        [
+          {
+            "node": "Stop on Non-Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Relevance Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Draft Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define Scope": {
+      "main": [
+        [
+          {
+            "node": "Fetch Google Trends Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Three-Option Approval to Telegram": {
+      "main": [
+        []
+      ]
+    },
+    "Extract Button Response": {
+      "main": [
+        [
+          {
+            "node": "Route by Button Click",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Button Click": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approved Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Revised Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Rejection Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Request Changes Decision": {
+      "main": [
+        [
+          {
+            "node": "Store Request Changes Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Request Changes Log": {
+      "main": [
+        [
+          {
+            "node": "Notify - Changes Requested",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify - Changes Requested": {
+      "main": [
+        [
+          {
+            "node": "Draft Generator1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Button response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Extract Button Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Button response": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Revised Data": {
+      "main": [
+        [
+          {
+            "node": "Log Request Changes Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approved Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approved Log Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approval Message1": {
+      "main": [
+        [
+          {
+            "node": "Send Three-Option Approval to Telegram1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Insert row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Generator1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser for Draft Generator1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Draft Generator1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Draft Generator1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "{{N8N_WORKFLOW_VERSION_ID}}",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "{{N8N_INSTANCE_ID}}"
+  },
+  "id": "{{N8N_WORKFLOW_ID}}",
+  "tags": []
+}
