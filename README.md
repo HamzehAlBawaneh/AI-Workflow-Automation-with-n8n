@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.png" alt="AI Workflow Automation with n8n Banner" width="100%">
+</p>
+
 # AI Workflow Automation with n8n
 
 > AI-powered workflow automation for intelligent trend monitoring, relevance classification, human approval, and audit logging.
